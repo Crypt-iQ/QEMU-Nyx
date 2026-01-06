@@ -414,11 +414,13 @@ void synchronization_disable_pt(CPUState *cpu)
 
     pt_disable(qemu_get_cpu(0), false);
 
+    bool discarding_tmp = GET_GLOBAL_STATE()->discard_tmp_snapshot && fast_reload_tmp_created(get_fast_reload_snapshot());
+
     handle_tmp_snapshot_state();
 
     if (GET_GLOBAL_STATE()->in_reload_mode ||
         GET_GLOBAL_STATE()->in_redqueen_reload_mode || GET_GLOBAL_STATE()->dump_page ||
-        fast_reload_tmp_created(get_fast_reload_snapshot()))
+        fast_reload_tmp_created(get_fast_reload_snapshot()) || discarding_tmp)
     {
         perform_reload();
     }
