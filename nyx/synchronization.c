@@ -157,6 +157,7 @@ void unblock_signals(void)
 static inline void handle_tmp_snapshot_state(void)
 {
     if (GET_GLOBAL_STATE()->discard_tmp_snapshot) {
+        nyx_printf("===== discard_tmp_snapshot true ===== \n");
         if (fast_reload_tmp_created(get_fast_reload_snapshot())) {
             qemu_mutex_lock_iothread();
             fast_reload_discard_tmp_snapshot(get_fast_reload_snapshot()); /* bye bye */
@@ -401,6 +402,8 @@ void synchronization_cow_full_detected(void)
     in_fuzzing_loop = false;
 }
 
+extern bool creating_tmp_snapshot;
+
 void synchronization_disable_pt(CPUState *cpu)
 {
     // nyx_trace();
@@ -429,6 +432,11 @@ void synchronization_disable_pt(CPUState *cpu)
         set_success_auxiliary_result_buffer(GET_GLOBAL_STATE()->auxilary_buffer, 2);
 
     in_fuzzing_loop = false;
+
+    if (fast_reload_tmp_created(get_fast_reload_snapshot()) && !creating_tmp_snapshot) {
+        synchronization_lock();
+        synchronization_enter_fuzzing_loop(cpu);
+    }
 }
 
 void synchronization_enter_fuzzing_loop(CPUState *cpu)

@@ -516,20 +516,26 @@ void handle_hypercall_kafl_panic(struct kvm_run *run,
     }
 }
 
+bool creating_tmp_snapshot = false;
+
 static void handle_hypercall_kafl_create_tmp_snapshot(struct kvm_run *run,
                                                       CPUState       *cpu,
                                                       uint64_t        hypercall_arg)
 {
     if (!fast_reload_tmp_created(get_fast_reload_snapshot())) {
+        nyx_printf("===== creating TMP snapshot =====\n");
         /* decode PT data */
         pt_disable(qemu_get_cpu(0), false);
 
         request_fast_vm_reload(GET_GLOBAL_STATE()->reload_state,
                                REQUEST_SAVE_SNAPSHOT_TMP);
         set_tmp_snapshot_created(GET_GLOBAL_STATE()->auxilary_buffer, 1);
+        creating_tmp_snapshot = true;
         handle_hypercall_kafl_release(run, cpu, hypercall_arg);
+        creating_tmp_snapshot = false;
     } else {
         // TODO: raise an error?
+        nyx_printf("===== TMP snapshot exists =====\n");
     }
 }
 
