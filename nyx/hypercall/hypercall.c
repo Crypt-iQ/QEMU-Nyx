@@ -592,6 +592,8 @@ static void handle_hypercall_kafl_printf(struct kvm_run *run,
     uint32_t hprintf_size = misc_data_size();
     read_virtual_memory(hypercall_arg, (uint8_t *)GET_GLOBAL_STATE()->hprintf_tmp_buffer, hprintf_size, cpu);
 
+    nyx_printf("hprintf msg: %s\n", GET_GLOBAL_STATE()->hprintf_tmp_buffer);
+
     set_hprintf_auxiliary_buffer(GET_GLOBAL_STATE()->auxilary_buffer, GET_GLOBAL_STATE()->hprintf_tmp_buffer,
                                  strnlen(GET_GLOBAL_STATE()->hprintf_tmp_buffer, hprintf_size));
     synchronization_lock();
