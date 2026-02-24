@@ -74,4 +74,6 @@ void cow_cache_disable(cow_cache_t *self);
 void cow_cache_enable_tmp_mode(cow_cache_t *self);
 void cow_cache_disable_tmp_mode(cow_cache_t *self);
 
+void cow_cache_merge_tmp_into_secondary(cow_cache_t *self);
+
 void set_global_cow_cache_primary_size(uint64_t new_size);

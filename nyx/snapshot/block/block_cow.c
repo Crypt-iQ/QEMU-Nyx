@@ -252,6 +252,52 @@ void cow_cache_disable_tmp_mode(cow_cache_t *self)
     self->enabled_fuzz_tmp = false;
 }
 
+// Merges writes in the "tmp" layer (dirty writes since incremental snapshot)
+// into the "secondary" (incremental) layer. Then clear tmp layer. After this,
+// secondary contains all of the dirty writes since incremental plus what it
+// originally contained.
+void cow_cache_merge_tmp_into_secondary(cow_cache_t *self)
+{
+    assert(self->enabled_fuzz);
+    assert(self->enabled_fuzz_tmp);
+
+    khiter_t k;
+    int ret;
+
+    for (k = kh_begin(self->lookup_secondary_tmp);
+         k != kh_end(self->lookup_secondary_tmp); ++k)
+    {
+        if (!kh_exist(self->lookup_secondary_tmp, k))
+            continue;
+
+        uint64_t offset_addr  = kh_key(self->lookup_secondary_tmp, k);
+        uint64_t tmp_data_off = kh_value(self->lookup_secondary_tmp, k);
+
+        /* Check if this chunk already exists in secondary */
+        khiter_t k_sec = kh_get(COW_CACHE, self->lookup_secondary, offset_addr);
+        if (k_sec == kh_end(self->lookup_secondary)) {
+            /* New chunk — allocate space in secondary */
+            if (self->offset_secondary >= COW_CACHE_SECONDARY_SIZE) {
+                GET_GLOBAL_STATE()->cow_cache_full = true;
+                abort();
+                return;
+            }
+            k_sec = kh_put(COW_CACHE, self->lookup_secondary, offset_addr, &ret);
+            kh_value(self->lookup_secondary, k_sec) = self->offset_secondary;
+            self->offset_secondary += CHUNK_SIZE;
+        }
+
+        /* Copy the chunk data from tmp into secondary (overwrite if existed) */
+        memcpy(self->data_secondary + kh_value(self->lookup_secondary, k_sec),
+               self->data_secondary_tmp + tmp_data_off,
+               CHUNK_SIZE);
+    }
+
+    /* Clear the tmp layer so it can collect fresh writes */
+    self->offset_secondary_tmp = 0;
+    kh_clear(COW_CACHE, self->lookup_secondary_tmp);
+}
+
 void cow_cache_enable(cow_cache_t *self)
 {
     cow_cache_reset(self);

@@ -136,6 +136,15 @@ void nyx_block_snapshot_reset(nyx_block_t *self)
     }
 }
 
+// Merge tmp block writes into the incremental layer for all block devices.
+void nyx_block_snapshot_merge_incremental(nyx_block_t *self)
+{
+    for (uint32_t i = 0; i < self->cow_cache_array_size; i++) {
+        cow_cache_merge_tmp_into_secondary(self->cow_cache_array[i]);
+    }
+    nyx_block_snapshot_flush(self);
+}
+
 void nyx_block_snapshot_serialize(nyx_block_t *self, const char *snapshot_folder)
 {
     fast_reload_cow_entry_t entry;

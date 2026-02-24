@@ -18,4 +18,6 @@ void nyx_block_snapshot_switch_incremental(nyx_block_t *self);
 void nyx_block_snapshot_disable_incremental(nyx_block_t *self);
 void nyx_block_snapshot_reset(nyx_block_t *self);
 
+void nyx_block_snapshot_merge_incremental(nyx_block_t *self);
+
 void nyx_block_snapshot_serialize(nyx_block_t *self, const char *snapshot_folder);

@@ -127,6 +127,7 @@ void fast_reload_qemu_user_fdl_set_dirty(fast_reload_t *self,
 
 void fast_reload_create_tmp_snapshot(fast_reload_t *self);
 void fast_reload_discard_tmp_snapshot(fast_reload_t *self);
+void fast_reload_update_tmp_snapshot(fast_reload_t *self);
 
 bool fast_reload_root_created(fast_reload_t *self);
 bool fast_reload_tmp_created(fast_reload_t *self);

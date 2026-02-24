@@ -518,6 +518,40 @@ void fast_reload_discard_tmp_snapshot(fast_reload_t *self)
     self->incremental_snapshot_enabled = false;
 }
 
+// Update/merge the existing incremental snapshot into a new one.
+// Merges 1) memory, 2) block devices, 3) device state
+void fast_reload_update_tmp_snapshot(fast_reload_t *self)
+{
+    assert(self && self->incremental_snapshot_enabled);
+
+    self->dirty_pages = 0;
+
+    bdrv_drain_all();
+    memory_global_dirty_log_sync();
+
+    nyx_device_state_save_tsc_incremental(self->device_state);
+
+    switch (mode) {
+    case RELOAD_MEMORY_MODE_FDL:
+        nyx_snapshot_nyx_fdl_save_root_pages(self->fdl_state, self->shadow_memory_state, self->blocklist);
+        break;
+    case RELOAD_MEMORY_MODE_DIRTY_RING:
+        nyx_snapshot_nyx_dirty_ring_save_root_pages(self->dirty_ring_state, self->shadow_memory_state, self->blocklist);
+        break;
+    }
+
+    nyx_snapshot_nyx_fdl_user_save_root_pages(self->fdl_user_state, self->shadow_memory_state, self->blocklist);
+
+    kvm_arch_put_registers(qemu_get_cpu(0), KVM_PUT_FULL_STATE_FAST);
+    qemu_get_cpu(0)->vcpu_dirty = false;
+
+    nyx_block_snapshot_merge_incremental(self->block_state);
+
+    fdl_fast_create_tmp(self->device_state->qemu_state);
+
+    coverage_bitmap_copy_to_buffer(self->bitmap_copy);
+}
+
 bool fast_reload_root_created(fast_reload_t *self)
 {
     return self->root_snapshot_created;
