@@ -533,6 +533,18 @@ static void handle_hypercall_kafl_create_tmp_snapshot(struct kvm_run *run,
     }
 }
 
+static void handle_hypercall_kafl_update_tmp_snapshot(struct kvm_run *run,
+                                                      CPUState       *cpu,
+                                                      uint64_t       hypercall_arg)
+{
+    if (fast_reload_tmp_created(get_fast_reload_snapshot())) {
+        pt_disable(qemu_get_cpu(0), false);
+        request_fast_vm_reload(GET_GLOBAL_STATE()->reload_state,
+                               REQUEST_UPDATE_SNAPSHOT_TMP);
+        handle_hypercall_kafl_release(run, cpu, hypercall_arg);
+    }
+}
+
 static void handle_hypercall_kafl_panic_extended(struct kvm_run *run,
                                                  CPUState       *cpu,
                                                  uint64_t        hypercall_arg)
@@ -975,7 +987,8 @@ int handle_kafl_hypercall(struct kvm_run *run,
         ret = 0;
         break;
     case KVM_EXIT_KAFL_DEBUG_TMP_SNAPSHOT:
-        handle_hypercall_kafl_debug_tmp_snapshot(run, cpu, arg);
+        handle_hypercall_kafl_update_tmp_snapshot(run, cpu, arg);
+        //handle_hypercall_kafl_debug_tmp_snapshot(run, cpu, arg);
         ret = 0;
         break;
     case KVM_EXIT_KAFL_GET_HOST_CONFIG:

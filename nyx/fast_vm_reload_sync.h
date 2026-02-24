@@ -9,6 +9,7 @@ typedef enum FastReloadRequest {
     REQUEST_SAVE_SNAPSHOT_PRE,
     REQUEST_SAVE_SNAPSHOT_ROOT,
     REQUEST_SAVE_SNAPSHOT_TMP,
+    REQUEST_UPDATE_SNAPSHOT_TMP,
 
     /* create snapshot and fix RIP (- sizeof(vmcall)) */
     REQUEST_SAVE_SNAPSHOT_PRE_FIX_RIP,

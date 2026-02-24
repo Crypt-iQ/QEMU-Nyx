@@ -188,6 +188,10 @@ static inline void perform_task_no_block_mode(fast_vm_reload_sync_t *self,
         fast_reload_create_tmp_snapshot(get_fast_reload_snapshot());
         fast_reload_restore(get_fast_reload_snapshot());
         break;
+    case REQUEST_UPDATE_SNAPSHOT_TMP:
+        fast_reload_update_tmp_snapshot(get_fast_reload_snapshot());
+        fast_reload_restore(get_fast_reload_snapshot());
+        break;
     case REQUEST_LOAD_SNAPSHOT_PRE:
         abort();
         break;
@@ -239,6 +243,10 @@ static inline void perform_task_block_mode(fast_vm_reload_sync_t *self,
     case REQUEST_SAVE_SNAPSHOT_TMP:
         vm_stop(RUN_STATE_SAVE_VM);
         fast_reload_create_tmp_snapshot(get_fast_reload_snapshot());
+        break;
+    case REQUEST_UPDATE_SNAPSHOT_TMP:
+        vm_stop(RUN_STATE_SAVE_VM);
+        fast_reload_update_tmp_snapshot(get_fast_reload_snapshot());
         break;
     case REQUEST_LOAD_SNAPSHOT_PRE:
         abort();
