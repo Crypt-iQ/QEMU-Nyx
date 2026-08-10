@@ -1990,6 +1990,20 @@ static int kvm_init(MachineState *ms)
         s->nyx_dirty_ring = false;
         fast_reload_set_mode(get_fast_reload_snapshot(), RELOAD_MEMORY_MODE_FDL);
     }
+    else if (ioctl(s->fd, KVM_CHECK_EXTENSION, KVM_CAP_NYX_FDL_AD) == 1){
+        /*
+         * Same FDL interface, but the kernel harvests hardware A/D bits on
+         * demand rather than being fed by PML.  Crucially it needs KVM's dirty
+         * logging to stay *off*: enabling it would make KVM write protect every
+         * page (no cpu_dirty_log_size on SVM), which is the cost we are trying
+         * to remove.
+         */
+        s->nyx_dirty_ring = false;
+        fast_reload_set_ad_fdl(true);
+        fast_reload_set_mode(get_fast_reload_snapshot(), RELOAD_MEMORY_MODE_FDL);
+        fprintf(stderr, "[QEMU-Nyx] Using A/D-bit FDL (no dirty logging, no "
+                        "write-protection faults)\n");
+    }
     else {
     
         int ret_val = ioctl(s->fd, KVM_CHECK_EXTENSION, KVM_CAP_DIRTY_LOG_RING);

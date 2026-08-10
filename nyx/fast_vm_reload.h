@@ -139,5 +139,12 @@ void fast_reload_init(fast_reload_t *self);
 
 void fast_reload_set_mode(fast_reload_t *self, FastReloadMemoryMode m);
 
+/*
+ * A/D-bit FDL variant: dirty state comes from the nested page tables, so QEMU
+ * must not turn on KVM's dirty logging for guest RAM.
+ */
+void fast_reload_set_ad_fdl(bool enabled);
+bool fast_reload_is_ad_fdl(void);
+
 void                 fast_reload_handle_dirty_ring_full(fast_reload_t *self);
 FastReloadMemoryMode fast_reload_get_mode(fast_reload_t *self);

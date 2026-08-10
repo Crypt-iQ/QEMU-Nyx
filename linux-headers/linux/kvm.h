@@ -305,6 +305,12 @@ struct kvm_hyperv_exit {
 
 #define KVM_CAP_NYX_PT 512
 #define KVM_CAP_NYX_FDL 513
+/*
+ * Nyx FDL driven by hardware nested-paging A/D bits instead of PML.  Present
+ * on any TDP host with A/D support, including AMD NPT, which has no PML and
+ * would otherwise fall back to write protecting every dirty page.
+ */
+#define KVM_CAP_NYX_FDL_AD 514
 
 #endif
 

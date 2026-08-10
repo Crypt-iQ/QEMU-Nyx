@@ -65,6 +65,18 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 
 FastReloadMemoryMode mode = RELOAD_MEMORY_MODE_DEBUG;
 
+static bool ad_fdl_mode = false;
+
+void fast_reload_set_ad_fdl(bool enabled)
+{
+    ad_fdl_mode = enabled;
+}
+
+bool fast_reload_is_ad_fdl(void)
+{
+    return ad_fdl_mode;
+}
+
 /* basic operations */
 
 static void fast_snapshot_init_operation(fast_reload_t *self,
@@ -114,7 +126,17 @@ static void fast_snapshot_init_operation(fast_reload_t *self,
         self->block_state = nyx_block_snapshot_init();
     }
 
-    memory_global_dirty_log_start();
+    /*
+     * With the A/D-bit FDL the kernel reads dirty state straight out of the
+     * nested page tables.  Turning on KVM_MEM_LOG_DIRTY_PAGES here would make
+     * KVM write protect the whole guest after every reset, reintroducing one
+     * nested page fault per dirty page - exactly what this mode avoids.  VGA
+     * still needs it while the pre-snapshot is being built.
+     */
+    if (!fast_reload_is_ad_fdl() || pre_snapshot) {
+        memory_global_dirty_log_start();
+    }
+
     if (!pre_snapshot) {
         self->root_snapshot_created = true;
     }
