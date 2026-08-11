@@ -10,6 +10,10 @@
 #include "sysemu/kvm.h"
 #include "sysemu/kvm_int.h"
 
+#if defined(__x86_64__)
+#include <immintrin.h>
+#endif
+
 #include <linux/kvm.h>
 
 #define FAST_IN_RANGE(address, start, end) (address < end && address >= start)
@@ -26,6 +30,56 @@ int                   dirty_ring_max_size_global = 0;
 struct kvm_dirty_gfn *kvm_dirty_gfns             = NULL; /* dirty ring mmap ptr */
 uint32_t              kvm_dirty_gfns_index       = 0;
 uint32_t              kvm_dirty_gfns_index_mask  = 0;
+
+#if defined(__x86_64__)
+static int nyx_nt_copy_enabled = -1;
+
+static bool nyx_nt_copy_available(void)
+{
+    if (nyx_nt_copy_enabled == -1) {
+        nyx_nt_copy_enabled = __builtin_cpu_supports("avx2") ? 1 : 0;
+        if (getenv("NYX_DISABLE_NT_COPY")) {
+            nyx_nt_copy_enabled = 0;
+        }
+    }
+    return nyx_nt_copy_enabled == 1;
+}
+
+/*
+ * Copy one page with non-temporal stores. Both pointers are page-aligned
+ * (region ptrs come from mmap() / RAMBlock->host, offsets are gfn << 12),
+ * which satisfies the 32-byte alignment _mm256_stream_si256 requires.
+ * No sfence here: the caller fences once after the whole restore loop.
+ */
+__attribute__((target("avx2")))
+static void nyx_nt_copy_page(void *dst, const void *src)
+{
+    __m256i       *d = (__m256i *)dst;
+    const __m256i *s = (const __m256i *)src;
+
+    for (int i = 0; i < TARGET_PAGE_SIZE / 32; i += 4) {
+        __m256i a = _mm256_load_si256(&s[i + 0]);
+        __m256i b = _mm256_load_si256(&s[i + 1]);
+        __m256i c = _mm256_load_si256(&s[i + 2]);
+        __m256i e = _mm256_load_si256(&s[i + 3]);
+        _mm256_stream_si256(&d[i + 0], a);
+        _mm256_stream_si256(&d[i + 1], b);
+        _mm256_stream_si256(&d[i + 2], c);
+        _mm256_stream_si256(&d[i + 3], e);
+    }
+}
+
+static inline void nyx_restore_copy_page(void *dst, const void *src)
+{
+    if (nyx_nt_copy_available()) {
+        nyx_nt_copy_page(dst, src);
+    } else {
+        memcpy(dst, src, TARGET_PAGE_SIZE);
+    }
+}
+#else
+#define nyx_restore_copy_page(dst, src) memcpy((dst), (src), TARGET_PAGE_SIZE)
+#endif
 
 
 static int vm_enable_dirty_ring(int vm_fd, uint32_t ring_size)
@@ -311,7 +365,7 @@ static uint32_t restore_memory(nyx_dirty_ring_t          *self,
                         entry_offset_addr;
                 }
 
-                memcpy(host_addr, snapshot_addr, TARGET_PAGE_SIZE);
+                nyx_restore_copy_page(host_addr, snapshot_addr);
 
                 clear_bit(gfn, (void *)kvm_region_slot->bitmap);
                 num_dirty_pages++;
@@ -319,6 +373,13 @@ static uint32_t restore_memory(nyx_dirty_ring_t          *self,
             kvm_region_slot->stack_ptr = 0;
         }
     }
+
+#if defined(__x86_64__)
+    if (num_dirty_pages && nyx_nt_copy_available()) {
+        _mm_sfence();
+    }
+#endif
+
     return num_dirty_pages;
 }
 
