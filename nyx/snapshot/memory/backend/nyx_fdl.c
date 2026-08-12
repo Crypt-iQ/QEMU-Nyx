@@ -14,6 +14,7 @@
 #include "nyx/snapshot/helper.h"
 #include "nyx/snapshot/memory/backend/nyx_fdl.h"
 #include "nyx/snapshot/memory/nyx_fdl_user.h"
+#include "nyx/snapshot/memory/nt_copy.h"
 
 /* debug option for the FDL constructor */
 // #define DEBUG_VMX_FDL_ALLOC
@@ -153,9 +154,13 @@ uint32_t nyx_snapshot_nyx_fdl_restore(nyx_fdl_t                 *self,
             }
 
             clear_bit(entry_offset_addr >> 12, (void *)self->entry[i].bitmap);
-            memcpy(host_addr, snapshot_addr, TARGET_PAGE_SIZE);
+            nyx_restore_copy_page(host_addr, snapshot_addr);
             num_dirty_pages++;
         }
+    }
+
+    if (num_dirty_pages) {
+        nyx_restore_copy_fence();
     }
 #ifdef RESET_VRAM
     // nyx_snapshot_nyx_fdl_restore_vram(self, shadow_memory_state);
